@@ -285,7 +285,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToChat, onNavigateT
                             <span className="font-display font-medium text-vintage-black">IntelliRead AI</span>
                         </div>
 
-                        <div className="flex flex-col sm:flex-row items-start justify-start space-y-3 sm:space-y-0 sm:space-x-12 text-xs sm:text-sm text-vintage-gray-600">
+                        <div className="flex flex-col sm:flex-row items-start justify-start space-y-3 sm:space-y-0 sm:space-x-16 text-xs sm:text-sm text-vintage-gray-600">
                             <span>AI-powered document analysis platform with vintage aesthetics. Upload documents and chat with your files using advanced AI.</span>
                             <span className="hidden sm:inline">•</span>
                             <span>Built with Modern Tech</span>
