@@ -1,5 +1,7 @@
 # IntelliRead AI
 
+[![Deploy with Vercel](https://vercel.com/button)](https://intelli-read-ai.vercel.app)
+
 AI-powered document analysis platform with vintage aesthetics. Upload documents and chat with your files using advanced AI.
 
 ## Features
