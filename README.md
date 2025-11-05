@@ -7,8 +7,8 @@
 
 ## 🚀 Quick Deploy
 
-[![Deploy to Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/your-username/intelli-read-ai)
-[![Deploy with Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/your-username/intelli-read-ai)
+[![Deploy to Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/codewithevilxd/intelli-read-ai)
+[![Deploy with Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/codewithevilxd/intelli-read-ai)
 
 > **2025 Edition** - Revolutionizing document analysis with cutting-edge AI technology and timeless vintage design. Transform how you interact with documents through intelligent conversations and instant insights.
 
@@ -40,10 +40,10 @@ AI-powered document analysis platform with vintage aesthetics. Upload documents 
 Click the buttons below to deploy your own instance of IntelliRead AI:
 
 <p align="center">
-  <a href="https://vercel.com/new/clone?repository-url=https://github.com/your-username/intelli-read-ai" style="margin-right: 20px;">
+  <a href="https://vercel.com/new/clone?repository-url=https://github.com/codewithevilxd/intelli-read-ai" style="margin-right: 20px;">
     <img src="https://vercel.com/button" alt="Deploy to Vercel" />
   </a>
-  <a href="https://app.netlify.com/start/deploy?repository=https://github.com/your-username/intelli-read-ai">
+  <a href="https://app.netlify.com/start/deploy?repository=https://github.com/codewithevilxd/intelli-read-ai">
     <img src="https://www.netlify.com/img/deploy/button.svg" alt="Deploy with Netlify" />
   </a>
 </p>
