@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
     ArrowLeft,
     Send,
@@ -13,18 +13,31 @@ import {
     Zap,
     Clock,
     FileCheck,
-    Upload
+    Upload,
+    History
 } from 'lucide-react';
 import { cn, generateId, formatRelativeTime, parseMarkdown } from '../utils';
 import type { Message, Attachment, ComparisonType } from '../types';
 import { processFile, cleanupFileResources, getFileStats, extractKeyInfo, compareDocuments, validateDocumentsForComparison } from '../services/fileService';
 import { chatWithContext } from '../services/groqService';
+// TODO: Re-enable database imports when ready
+// import { ensureUser, createChatSession, saveMessage, getChatHistory, getMessagesForSession, saveSearchHistory } from '../db';
+import type { ChatSession } from '../db/schema';
 
 interface ChatProps {
     onBackToLanding: () => void;
 }
 
 const Chat: React.FC<ChatProps> = ({ onBackToLanding }) => {
+    // Temporarily mock user for testing without Clerk
+    const user = useMemo(() => ({
+        id: 'test-user',
+        firstName: 'Test',
+        fullName: 'Test User',
+        primaryEmailAddress: { emailAddress: 'test@example.com' },
+        imageUrl: ''
+    }), []);
+
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -37,6 +50,9 @@ const Chat: React.FC<ChatProps> = ({ onBackToLanding }) => {
     const [showComparison, setShowComparison] = useState(false);
     const [comparisonType, setComparisonType] = useState<ComparisonType>('similarity');
     const [isComparing, setIsComparing] = useState(false);
+    const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+    const [showHistory, setShowHistory] = useState(false);
+    const [chatHistory, setChatHistory] = useState<ChatSession[]>([]);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -55,6 +71,46 @@ const Chat: React.FC<ChatProps> = ({ onBackToLanding }) => {
             attachments.forEach(att => cleanupFileResources(att));
         };
     }, [attachment, attachments]);
+
+    const loadChatHistory = useCallback(async () => {
+        if (!user) return;
+        try {
+            // TODO: Load chat history from database (disabled for testing)
+            // const history = await getChatHistory(user.id);
+            // setChatHistory(history);
+            setChatHistory([]); // Empty for now
+        } catch (error) {
+            console.error('Failed to load chat history:', error);
+        }
+    }, [user]);
+
+    // Load chat history when user is available
+    useEffect(() => {
+        if (user) {
+            loadChatHistory();
+        }
+    }, [user, loadChatHistory]);
+
+    const loadChatSession = async (sessionId: string) => {
+        try {
+            // TODO: Load chat session from database (disabled for testing)
+            // const sessionMessages = await getMessagesForSession(sessionId);
+            // const formattedMessages: Message[] = sessionMessages.map(msg => ({
+            //     id: msg.id,
+            //     content: msg.content,
+            //     role: msg.role as 'user' | 'assistant',
+            //     timestamp: new Date(msg.timestamp),
+            //     attachments: (msg.attachments as Attachment[]) || [],
+            // }));
+            // setMessages(formattedMessages);
+            setMessages([]); // Empty for now
+            setCurrentSessionId(sessionId);
+            setShowHistory(false);
+        } catch (error) {
+            console.error('Failed to load chat session:', error);
+            setError('Failed to load chat session');
+        }
+    };
 
     const handleFileUpload = async (file: File, isComparison: boolean = false) => {
         try {
@@ -152,7 +208,23 @@ Some suggestions:
     };
 
     const handleSendMessage = async () => {
-        if ((!input.trim() && !attachment) || isLoading) return;
+        if ((!input.trim() && !attachment) || isLoading || !user) return;
+
+        // TODO: Ensure user exists in database (disabled for testing)
+        // await ensureUser(user.id, user.primaryEmailAddress?.emailAddress || '', user.fullName || '', user.imageUrl || '');
+
+        // Create session if not exists
+        let sessionId = currentSessionId;
+        if (!sessionId) {
+            // TODO: Create chat session in database (disabled for testing)
+            // const session = await createChatSession(user.id, input.trim().slice(0, 50) || 'New Chat');
+            // if (!session) return; // Safety check
+            // sessionId = session.id;
+            sessionId = `session-${Date.now()}`; // Temporary session ID
+            setCurrentSessionId(sessionId);
+        }
+
+        if (!sessionId) return; // Safety check
 
         const userMessage: Message = {
             id: generateId(),
@@ -168,6 +240,14 @@ Some suggestions:
         setError(null);
 
         try {
+            // TODO: Save user message to database (disabled for testing)
+            // await saveMessage(sessionId, 'user', input.trim(), attachment ? [attachment] : undefined);
+
+            // TODO: Save search history if it's a search query (disabled for testing)
+            // if (input.trim() && attachment) {
+            //     await saveSearchHistory(user.id, input.trim(), attachment.name);
+            // }
+
             const conversationHistory = messages.map(msg => ({
                 role: msg.role,
                 content: msg.content,
@@ -203,6 +283,9 @@ Some suggestions:
             };
 
             setMessages(prev => [...prev, aiMessage]);
+
+            // TODO: Save AI response to database (disabled for testing)
+            // await saveMessage(sessionId, 'assistant', response);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Failed to process your request';
             setError(errorMessage);
@@ -309,6 +392,13 @@ ${result.detailedAnalysis ? `## Detailed Analysis\n${result.detailedAnalysis}` :
                         </div>
 
                         <div className="flex items-center space-x-3">
+                            <button
+                                onClick={() => setShowHistory(!showHistory)}
+                                className="p-2 rounded-lg btn-ghost focus-vintage"
+                                title="View chat history"
+                            >
+                                <History className="w-4 h-4" />
+                            </button>
                             {import.meta.env.DEV && (
                                 <button
                                     onClick={() => setShowDebug(!showDebug)}
@@ -357,6 +447,52 @@ ${result.detailedAnalysis ? `## Detailed Analysis\n${result.detailedAnalysis}` :
                                 >
                                     <X className="w-4 h-4" />
                                 </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* History Modal */}
+            {showHistory && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
+                        <div className="p-6 border-b border-vintage-gray-200">
+                            <div className="flex justify-between items-center">
+                                <h3 className="text-xl font-bold text-vintage-black">Chat History</h3>
+                                <button
+                                    onClick={() => setShowHistory(false)}
+                                    className="p-2 rounded-lg hover:bg-vintage-gray-100"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="p-6 max-h-96 overflow-y-auto">
+                            <div className="space-y-4">
+                                {chatHistory.length === 0 ? (
+                                    <p className="text-center text-vintage-gray-500 py-8">No chat history found</p>
+                                ) : (
+                                    chatHistory.map((session: ChatSession) => (
+                                        <div key={session.id} className="border border-vintage-gray-200 rounded-lg p-4 hover:bg-vintage-gray-50">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <h4 className="font-medium text-vintage-black">{session.title}</h4>
+                                                    <p className="text-sm text-vintage-gray-500">
+                                                        {formatRelativeTime(new Date(session.createdAt))}
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    onClick={() => loadChatSession(session.id)}
+                                                    className="px-3 py-1 text-sm bg-vintage-black text-white rounded hover:bg-vintage-gray-800"
+                                                >
+                                                    Load
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
                             </div>
                         </div>
                     </div>

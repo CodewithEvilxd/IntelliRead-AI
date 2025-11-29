@@ -23,6 +23,9 @@ AI-powered document analysis platform with vintage aesthetics. Upload documents 
 📱 **Fully Responsive** - Works perfectly on desktop, tablet, and mobile devices
 🔒 **Secure & Private** - Your documents stay private and secure with robust encryption
 🚀 **2025 Ready** - Built with the latest technologies for future-proof performance
+🔐 **User Authentication** - Secure login with Clerk authentication
+💾 **Chat History** - Persistent chat sessions and search history with NeonDB PostgreSQL
+📊 **Personal Dashboard** - Access your chat history and previous analyses
 
 ## 🛠️ Tech Stack
 
@@ -30,6 +33,8 @@ AI-powered document analysis platform with vintage aesthetics. Upload documents 
 - **Styling**: Tailwind CSS with custom vintage design system and glass effects
 - **AI**: Groq SDK with Meta Llama models (3-key failover system for reliability)
 - **Document Processing**: PDF.js, Mammoth.js, and custom text extraction for multiple formats
+- **Authentication**: Clerk for secure user authentication and session management
+- **Database**: NeonDB PostgreSQL with Drizzle ORM for type-safe database operations
 - **Build**: Vite with SWC for lightning-fast compilation and hot reloading
 - **Fonts**: Inter + Space Grotesk for modern, readable typography
 - **Icons**: Lucide React for consistent, beautiful iconography
@@ -53,6 +58,8 @@ Click the buttons below to deploy your own instance of IntelliRead AI:
 #### Prerequisites
 - Node.js 18+ and npm
 - Groq API key (get one at [groq.com](https://groq.com))
+- Clerk account (get one at [clerk.com](https://clerk.com))
+- NeonDB PostgreSQL database (get one at [neon.tech](https://neon.tech))
 
 #### Installation
 
@@ -72,13 +79,25 @@ npm install
 # Copy the example file
 cp .env.example .env
 
-# Edit .env and add your Groq API keys (up to 3 for failover)
+# Edit .env and add your API keys
 VITE_GROQ_API_KEY_1=your_first_groq_api_key_here
 VITE_GROQ_API_KEY_2=your_second_groq_api_key_here  # optional
 VITE_GROQ_API_KEY_3=your_third_groq_api_key_here   # optional
+
+# Clerk Authentication (get from https://clerk.com)
+VITE_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
+CLERK_SECRET_KEY=your_clerk_secret_key
+
+# NeonDB PostgreSQL (get from https://neon.tech)
+DATABASE_URL=your_neon_database_connection_string
 ```
 
-4. **Start development server**
+4. **Run database migration**
+```bash
+npm run migrate
+```
+
+5. **Start development server**
 ```bash
 npm run dev
 ```
@@ -89,7 +108,8 @@ Visit `http://localhost:5173` to see IntelliRead AI in action! 🎉
 ## 📁 Routes
 
 - `/` - Landing page with features showcase and vintage design
-- `/chat` - Interactive chat interface for document analysis
+- `/login` - Authentication page with Clerk sign-in/sign-up
+- `/chat` - Interactive chat interface for document analysis (requires authentication)
 - `/about` - About page with project information and statistics
 
 ## Project Structure
@@ -98,14 +118,21 @@ Visit `http://localhost:5173` to see IntelliRead AI in action! 🎉
 src/
 ├── components/          # React components
 │   ├── LandingPage.tsx  # Homepage with aesthetic elements
-│   └── Chat.tsx         # Chat interface (fully responsive)
+│   ├── Chat.tsx         # Chat interface with history (fully responsive)
+│   ├── LoginPage.tsx    # Authentication page with Clerk
+│   └── AboutPage.tsx    # About page with statistics
 ├── services/            # API integrations
 │   ├── groqService.ts   # AI chat functionality with 3-key failover
 │   ├── fileService.ts   # Multi-format document processing
 │   └── pdfService.ts    # Legacy PDF processing (deprecated)
+├── db/                  # Database layer
+│   ├── schema.ts        # Drizzle ORM schema definitions
+│   └── index.ts         # Database connection and queries
 ├── types/               # TypeScript type definitions
 ├── utils/               # Utility functions & markdown parser
 └── constants/           # Theme and configuration
+scripts/
+└── migrate.js          # Database migration script
 ```
 
 ## 🎯 Key Features Implemented

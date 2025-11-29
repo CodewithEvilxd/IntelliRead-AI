@@ -10,14 +10,20 @@
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "clean": "rm -rf node_modules && rm -rf package-lock.json && rm -rf dist && npm cache clean --force",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "migrate": "node scripts/migrate.js"
   },
   "dependencies": {
+    "@clerk/clerk-react": "^5.57.0",
+    "@neondatabase/serverless": "^1.0.2",
     "clsx": "^2.1.1",
+    "dotenv": "^16.6.1",
+    "drizzle-orm": "^0.44.7",
     "groq-sdk": "^0.29.0",
     "lucide-react": "^0.536.0",
     "mammoth": "^1.11.0",
     "pdfjs-dist": "^5.4.54",
+    "postgres": "^3.4.7",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "terser": "^5.43.1"

@@ -41,7 +41,10 @@ const App: React.FC = () => {
       ) : currentRoute === '/about' ? (
         <AboutPage onBackToLanding={navigateToLanding} />
       ) : (
-        <LandingPage onNavigateToChat={navigateToChat} onNavigateToAbout={navigateToAbout} />
+        <LandingPage
+          onNavigateToChat={navigateToChat}
+          onNavigateToAbout={navigateToAbout}
+        />
       )}
     </div>
   );

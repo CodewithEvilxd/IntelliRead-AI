@@ -1,5 +1,6 @@
 import React from 'react';
-import { FileText, ArrowRight, Sparkles, Brain, Star } from 'lucide-react';
+import { FileText, ArrowRight, Sparkles, Brain, Star, History, User } from 'lucide-react';
+import { useUser } from '@clerk/clerk-react';
 
 interface LandingPageProps {
     onNavigateToChat: () => void;
@@ -7,6 +8,7 @@ interface LandingPageProps {
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToChat, onNavigateToAbout }) => {
+    const { user, isSignedIn } = useUser();
     const features = [
         {
             icon: FileText,
@@ -43,7 +45,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToChat, onNavigateT
             title: '2025 Ready',
             description: 'Built with React 19, TypeScript, and future-proof architecture',
             highlight: 'Next-gen tech'
-        }
+        },
+        ...(isSignedIn ? [{
+            icon: History,
+            title: 'Chat History',
+            description: 'Access your previous conversations and search queries anytime',
+            highlight: 'Persistent'
+        }] : [])
     ];
 
     return (
@@ -166,12 +174,25 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToChat, onNavigateT
                         </div>
 
                         <p className="text-base sm:text-lg md:text-xl text-vintage-gray-600 max-w-2xl mx-auto leading-relaxed animate-slide-up animation-delay-200 px-4 sm:px-0">
-                            <span className="inline-flex items-center gap-2">
-                                <Brain className="w-5 h-5 text-vintage-black" />
-                                Upload any document and start chatting
-                            </span>
-                            . Get instant answers, summaries, and insights
-                            from PDFs, Word docs, PowerPoint presentations, and text files.
+                            {isSignedIn ? (
+                                <>
+                                    <span className="inline-flex items-center gap-2">
+                                        Welcome back, {user?.firstName || 'User'}!
+                                        <User className="w-5 h-5 text-vintage-black" />
+                                    </span>
+                                    <br />
+                                    Continue your document analysis journey. Your chat history and search queries are saved for easy access.
+                                </>
+                            ) : (
+                                <>
+                                    <span className="inline-flex items-center gap-2">
+                                        <Brain className="w-5 h-5 text-vintage-black" />
+                                        Upload any document and start chatting
+                                    </span>
+                                    . Get instant answers, summaries, and insights
+                                    from PDFs, Word docs, PowerPoint presentations, and text files.
+                                </>
+                            )}
                         </p>
                     </div>
 
