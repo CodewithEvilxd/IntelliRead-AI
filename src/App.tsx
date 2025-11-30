@@ -12,11 +12,11 @@ const App: React.FC = () => {
 
   // Auto-redirect authenticated users to dashboard (chat) only on first login
   useEffect(() => {
-    if (isSignedIn && currentPage === 'landing' && !hasVisitedDashboard) {
+    if (isSignedIn && !hasVisitedDashboard) {
       setCurrentPage('chat');
       setHasVisitedDashboard(true);
     }
-  }, [isSignedIn, currentPage, hasVisitedDashboard]);
+  }, [isSignedIn, hasVisitedDashboard]);
 
   // Redirect unauthenticated users trying to access chat to login
   useEffect(() => {

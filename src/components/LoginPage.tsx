@@ -138,8 +138,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackToLanding }) => {
               <div className="space-y-4">
                 {isSignUp ? (
                   <SignUp
-                    routing="path"
-                    path="/login"
+                    routing="virtual"
                     redirectUrl="/chat"
                     appearance={{
                       variables: {
@@ -166,8 +165,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackToLanding }) => {
                   />
                 ) : (
                   <SignIn
-                    routing="path"
-                    path="/login"
+                    routing="virtual"
                     redirectUrl="/chat"
                     appearance={{
                       variables: {

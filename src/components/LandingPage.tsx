@@ -235,7 +235,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToChat, onNavigateT
                             onClick={onNavigateToChat}
                             className="btn-primary text-sm px-4 py-1.5"
                         >
-                            Get Started
+                            Sign In
                         </button>
                     </div>
                     <div className="sm:hidden">
@@ -243,7 +243,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToChat, onNavigateT
                             onClick={onNavigateToChat}
                             className="btn-primary text-sm px-3 py-1.5"
                         >
-                            Start
+                            Sign In
                         </button>
                     </div>
                 </div>
