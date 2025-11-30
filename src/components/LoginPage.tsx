@@ -139,7 +139,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackToLanding }) => {
                 {isSignUp ? (
                   <SignUp
                     routing="virtual"
-                    redirectUrl="/chat"
                     appearance={{
                       variables: {
                         colorPrimary: '#000000',
@@ -166,7 +165,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackToLanding }) => {
                 ) : (
                   <SignIn
                     routing="virtual"
-                    redirectUrl="/chat"
                     appearance={{
                       variables: {
                         colorPrimary: '#000000',
