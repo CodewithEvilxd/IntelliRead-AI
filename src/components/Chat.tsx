@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useUser, useClerk } from '@clerk/clerk-react';
 import {
     ArrowLeft,
     Send,
@@ -14,7 +15,8 @@ import {
     Clock,
     FileCheck,
     Upload,
-    History
+    History,
+    LogOut
 } from 'lucide-react';
 import { cn, generateId, formatRelativeTime, parseMarkdown } from '../utils';
 import type { Message, Attachment, ComparisonType } from '../types';
@@ -29,14 +31,8 @@ interface ChatProps {
 }
 
 const Chat: React.FC<ChatProps> = ({ onBackToLanding }) => {
-    // Temporarily mock user for testing without Clerk
-    const user = useMemo(() => ({
-        id: 'test-user',
-        firstName: 'Test',
-        fullName: 'Test User',
-        primaryEmailAddress: { emailAddress: 'test@example.com' },
-        imageUrl: ''
-    }), []);
+    const { user } = useUser();
+    const { signOut } = useClerk();
 
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
@@ -392,6 +388,14 @@ ${result.detailedAnalysis ? `## Detailed Analysis\n${result.detailedAnalysis}` :
                         </div>
 
                         <div className="flex items-center space-x-3">
+                            <button
+                                onClick={() => signOut()}
+                                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-vintage-gray-700 hover:text-vintage-black bg-vintage-gray-100 hover:bg-vintage-gray-200 rounded-lg transition-all duration-200"
+                                title="Sign out"
+                            >
+                                <LogOut className="w-4 h-4" />
+                                <span className="hidden sm:inline">Sign Out</span>
+                            </button>
                             <button
                                 onClick={() => setShowHistory(!showHistory)}
                                 className="p-2 rounded-lg btn-ghost focus-vintage"

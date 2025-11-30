@@ -1,14 +1,120 @@
 import React from 'react';
-import { FileText, ArrowRight, Sparkles, Brain, Star, History, User } from 'lucide-react';
-import { useUser } from '@clerk/clerk-react';
+import { FileText, ArrowRight, Sparkles, Brain, Star, User, MessageSquare, History, LogOut } from 'lucide-react';
+import { useUser, useClerk } from '@clerk/clerk-react';
 
 interface LandingPageProps {
     onNavigateToChat: () => void;
+    onNavigateToYouTube: () => void;
     onNavigateToAbout: () => void;
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToChat, onNavigateToAbout }) => {
-    const { user, isSignedIn } = useUser();
+const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToChat, onNavigateToYouTube, onNavigateToAbout }) => {
+    const { isSignedIn } = useUser();
+    const { signOut } = useClerk();
+
+    // If user is signed in, show dashboard instead of marketing page
+    if (isSignedIn) {
+        return (
+            <div className="min-h-screen bg-vintage-white">
+                {/* Header */}
+                <header className="relative z-10 border-b backdrop-blur-sm border-vintage-gray-200 bg-vintage-white/95">
+                    <div className="px-4 py-4 mx-auto max-w-4xl sm:px-6">
+                        <div className="flex justify-between items-center">
+                            <div className="flex items-center space-x-4">
+                                <div className="flex justify-center items-center w-10 h-10 rounded-lg bg-vintage-black shadow-vintage">
+                                    <Brain className="w-6 h-6 text-vintage-white" />
+                                </div>
+                                <div>
+                                    <h1 className="text-xl font-bold font-display tracking-vintage">
+                                        IntelliRead AI
+                                    </h1>
+                                    <p className="text-xs text-vintage-gray-500">
+                                        Welcome back, User
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => signOut()}
+                                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-vintage-gray-700 hover:text-vintage-black bg-vintage-gray-100 hover:bg-vintage-gray-200 rounded-lg transition-all duration-200"
+                            >
+                                <LogOut className="w-4 h-4" />
+                                Sign Out
+                            </button>
+                        </div>
+                    </div>
+                </header>
+
+                {/* Dashboard Content */}
+                <main className="px-4 py-8 mx-auto max-w-4xl sm:px-6">
+                    <div className="mb-8">
+                        <h2 className="text-2xl font-display font-bold text-vintage-black mb-2">
+                            Your Dashboard
+                        </h2>
+                        <p className="text-vintage-gray-600">
+                            Access your document analysis tools and chat history
+                        </p>
+                    </div>
+
+                    <div className="grid gap-6 md:grid-cols-2">
+                        {/* Quick Actions */}
+                        <div className="bg-vintage-white rounded-2xl shadow-vintage-lg border border-vintage-gray-200 p-6">
+                            <h3 className="text-lg font-semibold text-vintage-black mb-4">Quick Actions</h3>
+                            <div className="space-y-3">
+                                <button
+                                    onClick={onNavigateToChat}
+                                    className="w-full bg-vintage-black text-vintage-white py-3 px-4 rounded-xl font-medium hover:bg-vintage-gray-800 transition-all duration-200 flex items-center justify-center gap-2"
+                                >
+                                    <MessageSquare className="w-5 h-5" />
+                                    Start New Chat
+                                </button>
+                                <button
+                                    onClick={onNavigateToChat}
+                                    className="w-full bg-vintage-gray-100 text-vintage-black py-3 px-4 rounded-xl font-medium hover:bg-vintage-gray-200 transition-all duration-200 flex items-center justify-center gap-2"
+                                >
+                                    <History className="w-5 h-5" />
+                                    View Chat History
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Recent Activity */}
+                        <div className="bg-vintage-white rounded-2xl shadow-vintage-lg border border-vintage-gray-200 p-6">
+                            <h3 className="text-lg font-semibold text-vintage-black mb-4">Recent Activity</h3>
+                            <div className="text-center py-8">
+                                <FileText className="w-12 h-12 text-vintage-gray-400 mx-auto mb-3" />
+                                <p className="text-vintage-gray-500 text-sm">
+                                    No recent documents analyzed
+                                </p>
+                                <p className="text-vintage-gray-400 text-xs mt-1">
+                                    Upload your first document to get started
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Stats */}
+                    <div className="mt-8 bg-gradient-to-r from-vintage-black to-vintage-gray-800 rounded-2xl p-6 text-vintage-white">
+                        <h3 className="text-lg font-semibold mb-4">Your Stats</h3>
+                        <div className="grid grid-cols-3 gap-4 text-center">
+                            <div>
+                                <div className="text-2xl font-bold">0</div>
+                                <div className="text-sm text-vintage-gray-300">Documents</div>
+                            </div>
+                            <div>
+                                <div className="text-2xl font-bold">0</div>
+                                <div className="text-vintage-gray-300">Chats</div>
+                            </div>
+                            <div>
+                                <div className="text-2xl font-bold">0</div>
+                                <div className="text-vintage-gray-300">Hours Saved</div>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        );
+    }
+
     const features = [
         {
             icon: FileText,
@@ -46,12 +152,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToChat, onNavigateT
             description: 'Built with React 19, TypeScript, and future-proof architecture',
             highlight: 'Next-gen tech'
         },
-        ...(isSignedIn ? [{
-            icon: History,
-            title: 'Chat History',
-            description: 'Access your previous conversations and search queries anytime',
-            highlight: 'Persistent'
-        }] : [])
+        // Removed authentication-dependent features for now
     ];
 
     return (
@@ -177,7 +278,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToChat, onNavigateT
                             {isSignedIn ? (
                                 <>
                                     <span className="inline-flex items-center gap-2">
-                                        Welcome back, {user?.firstName || 'User'}!
+                                        Welcome back, User!
                                         <User className="w-5 h-5 text-vintage-black" />
                                     </span>
                                     <br />
@@ -205,10 +306,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToChat, onNavigateT
                             <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
                         </button>
                         <button
-                            onClick={onNavigateToChat}
+                            onClick={onNavigateToYouTube}
                             className="w-full sm:w-auto btn-outline text-base px-6 py-3"
                         >
-                            See It Work
+                            YouTube Summaries
                         </button>
                     </div>
                 </div>
