@@ -26,7 +26,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToChat, onNavigateT
                                 </div>
                                 <div>
                                     <h1 className="text-xl font-bold font-display tracking-vintage">
-                                        IntelliRead AI
+                                        Snap Study
                                     </h1>
                                     <p className="text-xs text-vintage-gray-500">
                                         Welcome back, User
@@ -221,7 +221,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToChat, onNavigateT
                         <div className="w-6 h-6 sm:w-7 sm:h-7 bg-vintage-black rounded-md flex items-center justify-center">
                             <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-vintage-white" />
                         </div>
-                        <span className="text-lg sm:text-xl font-display font-semibold tracking-vintage">IntelliRead AI</span>
+                        <span className="text-lg sm:text-xl font-display font-semibold tracking-vintage">Snap Study</span>
                     </div>
                     <div className="hidden sm:flex items-center space-x-4">
                         <button className="nav-link text-sm">Features</button>
@@ -404,7 +404,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToChat, onNavigateT
                             <div className="w-5 h-5 bg-vintage-black rounded flex items-center justify-center">
                                 <FileText className="w-3 h-3 text-vintage-white" />
                             </div>
-                            <span className="font-display font-medium text-vintage-black">IntelliRead AI</span>
+                            <span className="font-display font-medium text-vintage-black">Snap Study</span>
                         </div>
 
                         <div className="flex flex-col sm:flex-row items-start justify-start space-y-3 sm:space-y-0 sm:space-x-16 text-xs sm:text-sm text-vintage-gray-600">

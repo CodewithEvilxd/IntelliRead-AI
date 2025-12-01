@@ -1,9 +1,9 @@
 {
-  "name": "intelliread-ai",
+  "name": "snap-study",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "AI-powered document analysis platform with vintage aesthetics",
+  "description": "Snap Study - AI-powered document analysis platform with vintage aesthetics",
   "scripts": {
     "dev": "vite --open",
     "build": "tsc && vite build",

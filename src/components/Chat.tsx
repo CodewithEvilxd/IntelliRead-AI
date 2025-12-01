@@ -378,7 +378,7 @@ ${result.detailedAnalysis ? `## Detailed Analysis\n${result.detailedAnalysis}` :
                                 </div>
                                 <div>
                                     <h1 className="text-xl font-bold font-display tracking-vintage">
-                                        IntelliRead AI
+                                        Snap Study
                                     </h1>
                                     <p className="text-xs text-vintage-gray-500">
                                         AI-Powered Document Analysis
@@ -693,7 +693,7 @@ ${result.detailedAnalysis ? `## Detailed Analysis\n${result.detailedAnalysis}` :
                                         <Brain className="w-10 h-10 text-vintage-white" />
                                     </div>
                                     <h2 className="mb-4 text-2xl font-bold font-display text-vintage-black">
-                                        Welcome to IntelliRead AI
+                                        Welcome to Snap Study
                                     </h2>
                                     <p className="mb-8 leading-relaxed text-vintage-gray-600">
                                         Upload documents to analyze and chat with your content using advanced AI, or compare multiple documents for insights.

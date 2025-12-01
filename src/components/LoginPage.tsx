@@ -55,7 +55,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackToLanding }) => {
                   <Brain className="w-8 h-8 text-vintage-white" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-display font-bold text-vintage-black">IntelliRead AI</h2>
+                  <h2 className="text-2xl font-display font-bold text-vintage-black">Snap Study</h2>
                   <p className="text-vintage-gray-600">AI-Powered Document Analysis</p>
                 </div>
               </div>
@@ -92,7 +92,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBackToLanding }) => {
               <div className="flex justify-center items-center w-16 h-16 mx-auto mb-4 rounded-2xl bg-vintage-black shadow-vintage-lg">
                 <Brain className="w-8 h-8 text-vintage-white" />
               </div>
-              <h1 className="text-2xl font-display font-bold text-vintage-black">IntelliRead AI</h1>
+              <h1 className="text-2xl font-display font-bold text-vintage-black">Snap Study</h1>
             </div>
 
             {/* Auth Card */}

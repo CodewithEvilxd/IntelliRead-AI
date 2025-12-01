@@ -19,7 +19,7 @@ const AboutPage: React.FC<AboutPageProps> = ({ onBackToLanding }) => {
     {
       name: "Sarah Johnson",
       role: "Research Analyst",
-      content: "IntelliRead AI has revolutionized how I analyze research documents. What used to take hours now takes minutes.",
+      content: "Snap Study has revolutionized how I analyze research documents. What used to take hours now takes minutes.",
       rating: 5
     },
     {
@@ -31,14 +31,14 @@ const AboutPage: React.FC<AboutPageProps> = ({ onBackToLanding }) => {
     {
       name: "Dr. Emily Rodriguez",
       role: "Academic Researcher",
-      content: "As a researcher, I deal with hundreds of papers. IntelliRead AI helps me extract key insights instantly.",
+      content: "As a researcher, I deal with hundreds of papers. Snap Study helps me extract key insights instantly.",
       rating: 5
     }
   ];
 
   const faqs = [
     {
-      question: "What file formats does IntelliRead AI support?",
+      question: "What file formats does Snap Study support?",
       answer: "We support PDF, Word documents (.docx), PowerPoint presentations (.pptx), and plain text files. Our AI can process and analyze content from all these formats seamlessly."
     },
     {
@@ -126,7 +126,7 @@ const AboutPage: React.FC<AboutPageProps> = ({ onBackToLanding }) => {
           <div className="flex items-center gap-3">
             <Brain className="w-8 h-8 text-vintage-brown" />
             <span className="text-2xl font-display font-bold text-vintage-brown tracking-vintage">
-              IntelliRead AI
+              Snap Study
             </span>
           </div>
         </div>
@@ -137,11 +137,11 @@ const AboutPage: React.FC<AboutPageProps> = ({ onBackToLanding }) => {
         {/* Hero Section */}
         <section className="text-center mb-16">
           <h1 className="text-5xl md:text-6xl font-display font-bold text-vintage-brown mb-6 tracking-vintage">
-            About IntelliRead AI
+            About Snap Study
           </h1>
           <p className="text-xl text-vintage-brown/80 max-w-3xl mx-auto leading-relaxed">
             Revolutionizing document analysis with cutting-edge AI technology.
-            IntelliRead AI transforms how you interact with documents, making complex information
+            Snap Study transforms how you interact with documents, making complex information
             accessible and actionable through intelligent conversation.
           </p>
         </section>
@@ -153,10 +153,10 @@ const AboutPage: React.FC<AboutPageProps> = ({ onBackToLanding }) => {
               Our Mission
             </h2>
             <p className="text-lg text-vintage-brown/70 leading-relaxed text-center max-w-4xl mx-auto">
-              At IntelliRead AI, we believe that knowledge should be accessible to everyone.
+              At Snap Study, we believe that knowledge should be accessible to everyone.
               Our mission is to democratize document analysis by providing an intuitive,
               powerful platform that can understand and explain complex documents in natural language.
-              Whether you're a student, researcher, professional, or curious mind, IntelliRead AI
+              Whether you're a student, researcher, professional, or curious mind, Snap Study
               empowers you to unlock the full potential of your documents.
             </p>
           </div>
@@ -387,7 +387,7 @@ const AboutPage: React.FC<AboutPageProps> = ({ onBackToLanding }) => {
           <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-8 shadow-lg border border-vintage-brown/10">
             <div className="text-center mb-8">
               <h2 className="text-3xl font-display font-bold text-vintage-brown mb-4">
-                See IntelliRead AI in Action
+                See Snap Study in Action
               </h2>
               <p className="text-vintage-brown/70 max-w-2xl mx-auto">
                 Experience how our AI transforms document analysis. Upload a document and ask questions naturally.
@@ -434,7 +434,7 @@ const AboutPage: React.FC<AboutPageProps> = ({ onBackToLanding }) => {
             </h2>
             <p className="text-vintage-brown/70 mb-6 max-w-2xl mx-auto">
               Join thousands of users who have discovered the power of intelligent document analysis.
-              Start exploring your documents with IntelliRead AI today.
+              Start exploring your documents with Snap Study today.
             </p>
             <button
               onClick={onBackToLanding}

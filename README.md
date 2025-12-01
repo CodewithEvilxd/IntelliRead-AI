@@ -1,4 +1,4 @@
-# IntelliRead AI 🤖
+# Snap Study 🤖
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -42,7 +42,7 @@ AI-powered document analysis platform with vintage aesthetics. Upload documents 
 ## 🚀 Quick Deploy
 
 ### One-Click Deploy
-Click the buttons below to deploy your own instance of IntelliRead AI:
+Click the buttons below to deploy your own instance of Snap Study:
 
 <p align="center">
   <a href="https://vercel.com/new/clone?repository-url=https://github.com/codewithevilxd/intelli-read-ai" style="margin-right: 20px;">
@@ -103,7 +103,7 @@ npm run dev
 ```
 
 5. **Open your browser**
-Visit `http://localhost:5173` to see IntelliRead AI in action! 🎉
+Visit `http://localhost:5173` to see Snap Study in action! 🎉
 
 ## 📁 Routes
 
