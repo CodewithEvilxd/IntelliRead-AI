@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Play, MessageSquare, Youtube, Clock, Eye, User, CheckCircle, AlertCircle, Loader } from 'lucide-react';
 import { extractVideoId, getVideoInfo, summarizeVideo, chatWithVideo, isValidYouTubeUrl, VideoSummary, YouTubeVideoInfo } from '../services/youtubeService';
+import { createChatSession, addMessageToSession } from '../utils/historyUtils';
+import { APIStatusIndicator } from './APILogos';
 
 interface YouTubeSummarizerProps {
   onBackToLanding: () => void;
+  sessionId: string | undefined;
 }
 
-const YouTubeSummarizer: React.FC<YouTubeSummarizerProps> = ({ onBackToLanding }) => {
+const YouTubeSummarizer: React.FC<YouTubeSummarizerProps> = ({ onBackToLanding, sessionId }) => {
   const [videoUrl, setVideoUrl] = useState('');
   const [videoInfo, setVideoInfo] = useState<YouTubeVideoInfo | null>(null);
   const [summary, setSummary] = useState<VideoSummary | null>(null);
@@ -16,6 +19,26 @@ const YouTubeSummarizer: React.FC<YouTubeSummarizerProps> = ({ onBackToLanding }
   const [chatMessage, setChatMessage] = useState('');
   const [chatHistory, setChatHistory] = useState<Array<{ role: 'user' | 'assistant'; content: string; timestamp: Date }>>([]);
   const [isChatting, setIsChatting] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+
+  // Load session if sessionId is provided
+  React.useEffect(() => {
+    const loadSession = async () => {
+      if (sessionId) {
+        const { getChatSession } = await import('../utils/historyUtils');
+        const session = getChatSession(sessionId);
+
+        if (session && session.messages.length > 0) {
+          // Load the video URL and summary from the session
+          setVideoUrl(session.videoUrl || '');
+          // Load messages - this would require more complex logic to restore the full state
+          // For now, we'll just set the URL and let the user re-analyze if needed
+        }
+      }
+    };
+
+    loadSession();
+  }, [sessionId]);
 
   const handleUrlSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,6 +74,11 @@ const YouTubeSummarizer: React.FC<YouTubeSummarizerProps> = ({ onBackToLanding }
     try {
       const videoSummary = await summarizeVideo(videoInfo);
       setSummary(videoSummary);
+
+      // Create a chat session for this video
+      const title = `Chat about: ${videoInfo.title}`;
+      const session = createChatSession('youtube', title, videoUrl);
+      setCurrentSessionId(session.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate summary');
     } finally {
@@ -67,9 +95,26 @@ const YouTubeSummarizer: React.FC<YouTubeSummarizerProps> = ({ onBackToLanding }
     setIsChatting(true);
     setError(null);
 
+    // Create session if not exists
+    let sessionId = currentSessionId;
+    if (!sessionId) {
+      const title = `Chat about: ${videoInfo?.title || 'YouTube Video'}`;
+      const session = createChatSession('youtube', title, videoUrl);
+      sessionId = session.id;
+      setCurrentSessionId(sessionId);
+    }
+
     // Add user message to chat
     const newUserMessage = { role: 'user' as const, content: userMessage, timestamp: new Date() };
     setChatHistory(prev => [...prev, newUserMessage]);
+
+    // Save user message to session
+    if (sessionId) {
+      addMessageToSession(sessionId, {
+        content: userMessage,
+        role: 'user'
+      });
+    }
 
     try {
       const response = await chatWithVideo(userMessage, summary, chatHistory.map(h => ({ role: h.role, content: h.content })));
@@ -77,6 +122,14 @@ const YouTubeSummarizer: React.FC<YouTubeSummarizerProps> = ({ onBackToLanding }
       // Add AI response to chat
       const aiMessage = { role: 'assistant' as const, content: response, timestamp: new Date() };
       setChatHistory(prev => [...prev, aiMessage]);
+
+      // Save AI response to session
+      if (sessionId) {
+        addMessageToSession(sessionId, {
+          content: response,
+          role: 'assistant'
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to get response');
     } finally {
@@ -203,23 +256,32 @@ const YouTubeSummarizer: React.FC<YouTubeSummarizerProps> = ({ onBackToLanding }
                   </div>
                 </div>
 
-                <button
-                  onClick={handleSummarize}
-                  disabled={isSummarizing}
-                  className="w-full bg-red-600 text-white py-3 px-6 rounded-xl font-medium hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2"
-                >
-                  {isSummarizing ? (
-                    <>
-                      <Loader className="w-5 h-5 animate-spin" />
-                      Generating Summary...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="w-5 h-5" />
-                      Generate AI Summary
-                    </>
+                <div className="space-y-3">
+                  <button
+                    onClick={handleSummarize}
+                    disabled={isSummarizing}
+                    className="w-full bg-red-600 text-white py-3 px-6 rounded-xl font-medium hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2"
+                  >
+                    {isSummarizing ? (
+                      <>
+                        <Loader className="w-5 h-5 animate-spin" />
+                        Analyzing with Multiple AI Models...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-5 h-5" />
+                        Generate AI Summary
+                      </>
+                    )}
+                  </button>
+
+                  {isSummarizing && (
+                    <APIStatusIndicator
+                      apis={['openai', 'groq', 'openrouter']}
+                      className="justify-center"
+                    />
                   )}
-                </button>
+                </div>
               </div>
             </div>
           </div>
@@ -320,9 +382,15 @@ const YouTubeSummarizer: React.FC<YouTubeSummarizerProps> = ({ onBackToLanding }
                   )}
                   {isChatting && (
                     <div className="bg-vintage-gray-50 text-vintage-gray-900 mr-4 p-3 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <Loader className="w-4 h-4 animate-spin" />
-                        <span className="text-sm">Thinking...</span>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Loader className="w-4 h-4 animate-spin" />
+                          <span className="text-sm">Analyzing with multiple AI models...</span>
+                        </div>
+                        <APIStatusIndicator
+                          apis={['openai', 'groq', 'openrouter']}
+                          className="justify-start"
+                        />
                       </div>
                     </div>
                   )}

@@ -4,11 +4,10 @@ import { useUser, useClerk } from '@clerk/clerk-react';
 
 interface LandingPageProps {
     onNavigateToChat: () => void;
-    onNavigateToYouTube: () => void;
     onNavigateToAbout: () => void;
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToChat, onNavigateToYouTube, onNavigateToAbout }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToChat, onNavigateToAbout }) => {
     const { isSignedIn } = useUser();
     const { signOut } = useClerk();
 
@@ -304,12 +303,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToChat, onNavigateT
                         >
                             <span>Start Now</span>
                             <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                        </button>
-                        <button
-                            onClick={onNavigateToYouTube}
-                            className="w-full sm:w-auto btn-outline text-base px-6 py-3"
-                        >
-                            YouTube Summaries
                         </button>
                     </div>
                 </div>

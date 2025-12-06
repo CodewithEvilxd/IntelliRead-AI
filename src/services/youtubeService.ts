@@ -1,5 +1,9 @@
 // import { GoogleGenerativeAI } from '@google/generative-ai'; // Uncomment when package is installed
 // import { YoutubeTranscript } from 'youtube-transcript'; // Uncomment when package is installed
+import { chatWithOpenAI } from './openaiService';
+import { chatWithOpenRouter } from './openRouterService';
+import { chatWithContext } from './groqService';
+import { analyzeYouTubeWithGemini, chatWithGemini } from './googleGeminiService';
 
 // YouTube API types
 export interface YouTubeVideoInfo {
@@ -234,9 +238,117 @@ const generateRelevantTopics = (analysis: ContentAnalysis): string[] => {
   return topicMap[analysis.mainTopic] || ['Education', 'Information', 'Content', 'Learning'];
 };
 
+// Function to combine YouTube analysis responses from multiple APIs
+async function combineYouTubeAPIResponses(
+  videoInfo: YouTubeVideoInfo,
+  responses: { api: string; summary: VideoSummary; error?: string }[]
+): Promise<VideoSummary> {
+  const validResponses = responses.filter(r => r.summary && !r.error);
+
+  if (validResponses.length === 0) {
+    throw new Error('All AI services failed to analyze the YouTube video');
+  }
+
+  if (validResponses.length === 1) {
+    // Since we filtered for valid responses, this should always have a summary
+    return (validResponses[0] as { api: string; summary: VideoSummary }).summary;
+  }
+
+  // If we have multiple responses, combine them intelligently
+  try {
+    console.log('🤖 Synthesizing YouTube analysis from multiple APIs...');
+
+    const synthesisPrompt = `You are an expert AI synthesizer specializing in YouTube video analysis. You have received video analysis summaries from multiple AI models analyzing the same YouTube video. Your task is to create a comprehensive, detailed video summary that combines the best insights from all analyses.
+
+VIDEO INFORMATION:
+- Title: "${videoInfo.title}"
+- Channel: ${videoInfo.channelTitle}
+- Duration: ${videoInfo.duration}
+- Description: ${videoInfo.description || 'Not available'}
+
+ANALYSES FROM DIFFERENT AI MODELS:
+${validResponses.map((r, i) => `--- Analysis ${i + 1} from ${r.api} ---
+Summary: ${r.summary.summary}
+Key Points: ${r.summary.keyPoints.join(', ')}
+Topics: ${r.summary.topics.join(', ')}
+Sentiment: ${r.summary.sentiment}
+Language: ${r.summary.language}
+Transcript Preview: ${r.summary.transcript?.slice(0, 500) || 'Not available'}`).join('\n\n')}
+
+SYNTHESIS INSTRUCTIONS:
+1. Combine the most accurate and detailed information from all analyses
+2. Resolve any contradictions by prioritizing analyses that reference specific video content
+3. Create a comprehensive summary that covers all aspects of the video
+4. Include specific timestamps and references when available
+5. Structure the response clearly with proper formatting
+6. If analyses differ, explain the different perspectives and provide the most complete analysis
+7. Ensure the final summary is detailed and thorough
+
+Create a single, comprehensive VideoSummary object that represents the best analysis possible. Focus on:
+- A detailed executive summary
+- Comprehensive key points with timestamps where possible
+- All relevant topics covered
+- Accurate sentiment and language detection
+- Professional analysis quality
+
+Format your response as a complete video summary:`;
+
+    const combinedResponse = await chatWithContext(synthesisPrompt, [], undefined);
+
+    // Parse the synthesized response into VideoSummary format
+    const lines = combinedResponse.split('\n');
+    const summary = combinedResponse;
+    const keyPoints: string[] = [];
+    const topics: string[] = [];
+    let sentiment: 'positive' | 'neutral' | 'negative' = 'neutral';
+    let language = 'English';
+
+    // Extract key points (lines that look like timestamps or bullet points)
+    lines.forEach(line => {
+      if (line.includes('[') && line.includes(']') && (line.includes(':') || line.includes('-'))) {
+        keyPoints.push(line.trim());
+      } else if (line.toLowerCase().includes('sentiment')) {
+        if (line.toLowerCase().includes('positive')) sentiment = 'positive';
+        else if (line.toLowerCase().includes('negative')) sentiment = 'negative';
+      } else if (line.toLowerCase().includes('language')) {
+        language = line.split(':')[1]?.trim() || 'English';
+      }
+    });
+
+    // Extract topics from all responses
+    validResponses.forEach(response => {
+      if (response.summary) {
+        topics.push(...response.summary.topics);
+      }
+    });
+
+    // Create mock transcript from the best available
+    const bestTranscript = validResponses.find(r => r.summary?.transcript)?.summary?.transcript ||
+                          validResponses[0]?.summary?.transcript || 'Transcript not available';
+
+    return {
+      title: videoInfo.title,
+      summary,
+      keyPoints: keyPoints.length > 0 ? keyPoints : (validResponses[0]?.summary?.keyPoints || []),
+      transcript: bestTranscript,
+      duration: videoInfo.duration,
+      topics: [...new Set(topics)], // Remove duplicates
+      sentiment,
+      language
+    };
+  } catch (error) {
+    console.warn('YouTube synthesis failed, returning first valid response:', error);
+  }
+
+  // Fallback: return the response with the most detailed summary
+  return validResponses.reduce((best, current) =>
+    ((current.summary?.summary?.length || 0) > (best.summary?.summary?.length || 0)) ? current : best
+  ).summary!;
+}
+
 // Professional AI-powered video analysis with timestamps and detailed breakdown
 // @ts-expect-error - videoId parameter kept for future use
-const fetchMockTranscript = async (videoId: string, title: string): Promise<string> => { // eslint-disable-line @typescript-eslint/no-unused-vars
+const fetchMockTranscript = async (videoId: string, title: string): Promise<string> => {
   // Simulate transcript fetching with detailed, realistic content
   const transcriptTemplates = {
     tutorial: `[00:00] Introduction and overview of the tutorial
@@ -396,210 +508,527 @@ This video is highly recommended for ${analysis.targetAudience} seeking to maste
   };
 };
 
-// Generate professional video summary with AI-powered analysis
-// @ts-expect-error - transcript parameter kept for future use
-export const summarizeVideo = async (videoInfo: YouTubeVideoInfo, transcript?: string): Promise<VideoSummary> => { // eslint-disable-line @typescript-eslint/no-unused-vars
+// Generate professional video summary with multi-API analysis
+export const summarizeVideo = async (videoInfo: YouTubeVideoInfo): Promise<VideoSummary> => {
   try {
-    console.log('Generating professional AI-powered summary for video:', videoInfo.title);
+    console.log('🤖 Generating comprehensive YouTube analysis using all three APIs...');
 
-    // Simulate transcript fetching (in real implementation, this would use youtube-transcript)
-    const mockTranscript = await fetchMockTranscript(videoInfo.id, videoInfo.title);
+    // Prepare API calls for video summarization
+    const apiPromises = [
+      // OpenAI API call for video analysis
+      (async () => {
+        try {
+          console.log('🔄 Calling OpenAI for YouTube analysis...');
+          const prompt = `You are an elite AI assistant specializing in comprehensive YouTube video analysis. Analyze this video thoroughly and provide detailed insights.
 
-    // Generate comprehensive analysis using simulated AI processing
-    const analysis = await generateProfessionalAnalysis(videoInfo, mockTranscript);
-
-    return {
-      title: videoInfo.title,
-      summary: analysis.summary,
-      keyPoints: analysis.keyPoints,
-      transcript: mockTranscript,
-      duration: videoInfo.duration,
-      topics: analysis.topics,
-      sentiment: analysis.sentiment,
-      language: analysis.language,
-    };
-
-    // Uncomment below for real Gemini AI integration (requires package installation)
-    /*
-    const genAI = getGeminiClient();
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
-    const prompt = `You are a professional video content analyst with expertise in comprehensive analysis. Analyze this YouTube video and provide a detailed breakdown with timestamps, key insights, and professional assessment.
-
-Video Information:
-- Title: ${videoInfo.title}
+VIDEO INFORMATION:
+- Title: "${videoInfo.title}"
 - Channel: ${videoInfo.channelTitle}
 - Duration: ${videoInfo.duration}
-- Description: ${videoInfo.description}
+- Description: ${videoInfo.description || 'Not available'}
 
-Transcript/Content:
-${transcript || 'Transcript not available - analyze based on title and description'}
+CONTENT ANALYSIS REQUEST:
+Provide a comprehensive analysis of this YouTube video including:
+1. **Executive Summary**: Detailed overview of the video's content and purpose
+2. **Content Breakdown**: What the video covers with specific timestamps where possible
+3. **Key Insights**: Important points, techniques, or information presented
+4. **Target Audience**: Who would benefit most from this content
+5. **Value Proposition**: What viewers will learn or gain
+6. **Topics Covered**: Main subject areas and themes
+7. **Overall Assessment**: Professional evaluation of content quality
 
-Please provide a comprehensive professional analysis including:
-1. Executive summary with content assessment
-2. Detailed timestamp breakdown of video structure
-3. Key insights and technical analysis
-4. Professional recommendations and ratings
-5. Target audience and skill level assessment
-6. Practical applications and value proposition
+Be thorough and reference specific parts of the video content. Structure your response professionally.`;
 
-Format as a professional report with clear sections and actionable insights.`;
+          const summary = await chatWithOpenAI(prompt, [], undefined);
+          const mockTranscript = await fetchMockTranscript(videoInfo.id, videoInfo.title);
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+          return {
+            api: 'OpenAI',
+            summary: {
+              title: videoInfo.title,
+              summary,
+              keyPoints: extractKeyPointsFromText(summary),
+              transcript: mockTranscript,
+              duration: videoInfo.duration,
+              topics: extractTopicsFromText(summary),
+              sentiment: analyzeSentimentFromText(summary),
+              language: 'English'
+            }
+          };
+        } catch (error) {
+          console.warn('OpenAI YouTube analysis failed:', error);
+          return { api: 'OpenAI', summary: null, error: error instanceof Error ? error.message : 'Unknown error' };
+        }
+      })(),
 
-    // Parse the professional analysis
-    const summary = text;
-    const keyPoints = extractKeyPointsFromAnalysis(text);
-    const topics = extractTopicsFromAnalysis(text);
-    const sentiment = analyzeSentimentFromText(text);
+      // OpenRouter API call for video analysis
+      (async () => {
+        try {
+          console.log('🔄 Calling OpenRouter for YouTube analysis...');
+          const prompt = `You are an elite AI assistant specializing in comprehensive YouTube video analysis. Analyze this video thoroughly and provide detailed insights.
 
-    return {
-      title: videoInfo.title,
-      summary,
-      keyPoints,
-      transcript,
-      duration: videoInfo.duration,
-      topics,
-      sentiment,
-      language: 'English',
-    };
-    */
+VIDEO INFORMATION:
+- Title: "${videoInfo.title}"
+- Channel: ${videoInfo.channelTitle}
+- Duration: ${videoInfo.duration}
+- Description: ${videoInfo.description || 'Not available'}
+
+CONTENT ANALYSIS REQUEST:
+Provide a comprehensive analysis of this YouTube video including:
+1. **Executive Summary**: Detailed overview of the video's content and purpose
+2. **Content Breakdown**: What the video covers with specific timestamps where possible
+3. **Key Insights**: Important points, techniques, or information presented
+4. **Target Audience**: Who would benefit most from this content
+5. **Value Proposition**: What viewers will learn or gain
+6. **Topics Covered**: Main subject areas and themes
+7. **Overall Assessment**: Professional evaluation of content quality
+
+Be thorough and reference specific parts of the video content. Structure your response professionally.`;
+
+          const summary = await chatWithOpenRouter(prompt, [], undefined);
+          const mockTranscript = await fetchMockTranscript(videoInfo.id, videoInfo.title);
+
+          return {
+            api: 'OpenRouter',
+            summary: {
+              title: videoInfo.title,
+              summary,
+              keyPoints: extractKeyPointsFromText(summary),
+              transcript: mockTranscript,
+              duration: videoInfo.duration,
+              topics: extractTopicsFromText(summary),
+              sentiment: analyzeSentimentFromText(summary),
+              language: 'English'
+            }
+          };
+        } catch (error) {
+          console.warn('OpenRouter YouTube analysis failed:', error);
+          return { api: 'OpenRouter', summary: null, error: error instanceof Error ? error.message : 'Unknown error' };
+        }
+      })(),
+
+      // Groq API call for video analysis
+      (async () => {
+        try {
+          console.log('🔄 Calling Groq for YouTube analysis...');
+          const prompt = `You are an elite AI assistant specializing in comprehensive YouTube video analysis. Analyze this video thoroughly and provide detailed insights.
+
+VIDEO INFORMATION:
+- Title: "${videoInfo.title}"
+- Channel: ${videoInfo.channelTitle}
+- Duration: ${videoInfo.duration}
+- Description: ${videoInfo.description || 'Not available'}
+
+CONTENT ANALYSIS REQUEST:
+Provide a comprehensive analysis of this YouTube video including:
+1. **Executive Summary**: Detailed overview of the video's content and purpose
+2. **Content Breakdown**: What the video covers with specific timestamps where possible
+3. **Key Insights**: Important points, techniques, or information presented
+4. **Target Audience**: Who would benefit most from this content
+5. **Value Proposition**: What viewers will learn or gain
+6. **Topics Covered**: Main subject areas and themes
+7. **Overall Assessment**: Professional evaluation of content quality
+
+Be thorough and reference specific parts of the video content. Structure your response professionally.`;
+
+          const summary = await chatWithContext(prompt, [], undefined);
+          const mockTranscript = await fetchMockTranscript(videoInfo.id, videoInfo.title);
+
+          return {
+            api: 'Groq',
+            summary: {
+              title: videoInfo.title,
+              summary,
+              keyPoints: extractKeyPointsFromText(summary),
+              transcript: mockTranscript,
+              duration: videoInfo.duration,
+              topics: extractTopicsFromText(summary),
+              sentiment: analyzeSentimentFromText(summary),
+              language: 'English'
+            }
+          };
+        } catch (error) {
+          console.warn('Groq YouTube analysis failed:', error);
+          return { api: 'Groq', summary: null, error: error instanceof Error ? error.message : 'Unknown error' };
+        }
+      })(),
+
+      // Google Gemini API call for video analysis
+      (async () => {
+        try {
+          console.log('🔄 Calling Google Gemini for YouTube analysis...');
+          const analysis = await analyzeYouTubeWithGemini(videoInfo);
+          const mockTranscript = await fetchMockTranscript(videoInfo.id, videoInfo.title);
+
+          return {
+            api: 'Google Gemini',
+            summary: {
+              title: videoInfo.title,
+              summary: analysis.summary,
+              keyPoints: analysis.keyPoints,
+              transcript: mockTranscript,
+              duration: videoInfo.duration,
+              topics: analysis.topics,
+              sentiment: analysis.sentiment,
+              language: analysis.language
+            }
+          };
+        } catch (error) {
+          console.warn('Google Gemini YouTube analysis failed:', error);
+          return { api: 'Google Gemini', summary: null, error: error instanceof Error ? error.message : 'Unknown error' };
+        }
+      })()
+    ];
+
+    // Wait for all API calls to complete (with timeout)
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('YouTube analysis API calls timed out')), 90000) // 90 seconds timeout
+    );
+
+    try {
+      const results = await Promise.race([
+        Promise.all(apiPromises),
+        timeoutPromise
+      ]);
+
+      console.log(`✅ Received ${results.filter(r => r.summary).length} successful YouTube analyses`);
+
+      // Filter out failed responses and combine using synthesis
+      const validResults = results.filter(r => r.summary !== null) as { api: string; summary: VideoSummary; error?: string }[];
+      return await combineYouTubeAPIResponses(videoInfo, validResults);
+    } catch (error) {
+      console.error('Multi-API YouTube analysis failed:', error);
+      // Fall back to mock implementation
+      console.log('🔄 Falling back to enhanced mock analysis...');
+      const mockTranscript = await fetchMockTranscript(videoInfo.id, videoInfo.title);
+      const analysis = await generateProfessionalAnalysis(videoInfo, mockTranscript);
+
+      return {
+        title: videoInfo.title,
+        summary: analysis.summary,
+        keyPoints: analysis.keyPoints,
+        transcript: mockTranscript,
+        duration: videoInfo.duration,
+        topics: analysis.topics,
+        sentiment: analysis.sentiment,
+        language: analysis.language,
+      };
+    }
   } catch (error) {
-    console.error('Error generating professional video summary:', error);
-    throw new Error('Failed to generate professional video analysis. Please try again.');
+    console.error('Error generating comprehensive YouTube analysis:', error);
+    throw new Error('Failed to generate comprehensive video analysis. Please try again.');
   }
 };
 
 // Chat with video content using Gemini AI
-// Chat with video content using Gemini AI
+// Function to combine YouTube chat responses from multiple APIs
+async function combineYouTubeChatResponses(
+  userMessage: string,
+  videoSummary: VideoSummary,
+  conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>,
+  responses: { api: string; response: string; error?: string }[]
+): Promise<string> {
+  const validResponses = responses.filter(r => r.response && !r.error);
+
+  if (validResponses.length === 0) {
+    throw new Error('All AI services failed to respond to your YouTube question');
+  }
+
+  if (validResponses.length === 1) {
+    return validResponses[0]?.response || '';
+  }
+
+  // If we have multiple responses, combine them intelligently
+  try {
+    console.log('🤖 Synthesizing YouTube chat responses from multiple APIs...');
+
+    const synthesisPrompt = `You are an expert AI synthesizer specializing in YouTube video discussions. You have received responses from multiple AI models answering a user's question about a YouTube video. Your task is to create a comprehensive, helpful response that combines the best insights from all responses.
+
+VIDEO CONTEXT:
+- Title: "${videoSummary.title}"
+- Topics: ${videoSummary.topics.join(', ')}
+- Key Points: ${videoSummary.keyPoints.slice(0, 3).join(', ')}
+- Duration: ${videoSummary.duration}
+
+USER QUESTION: ${userMessage}
+
+CONVERSATION HISTORY:
+${conversationHistory.slice(-3).map(msg => `${msg.role}: ${msg.content}`).join('\n')}
+
+RESPONSES FROM DIFFERENT AI MODELS:
+${validResponses.map((r, i) => `--- Response ${i + 1} from ${r.api} ---\n${r.response}`).join('\n\n')}
+
+SYNTHESIS INSTRUCTIONS:
+1. Combine the most accurate and helpful information from all responses
+2. Resolve any contradictions by prioritizing responses that reference specific video content
+3. Provide a comprehensive answer that addresses all aspects of the user's question
+4. Include specific references to video content when relevant
+5. Structure the response clearly and conversationally
+6. If responses differ, provide the most complete and accurate answer
+7. Ensure the final response is helpful, accurate, and engaging
+
+Create a single, comprehensive response that represents the best answer possible. Focus on being:
+- Directly responsive to the user's question
+- Reference specific video content when appropriate
+- Helpful and conversational in tone
+- Comprehensive but not overwhelming
+- Accurate to the video's actual content
+
+Provide the best possible answer to the user's question about this YouTube video:`;
+
+    const combinedResponse = await chatWithContext(synthesisPrompt, [], undefined);
+    return combinedResponse.trim();
+  } catch (error) {
+    console.warn('YouTube chat synthesis failed, returning first valid response:', error);
+  }
+
+  // Fallback: return the longest response if synthesis fails
+  return validResponses.reduce((longest, current) =>
+    current.response.length > longest.response.length ? current : longest
+  ).response;
+}
+
+// Chat with video content using multi-API approach
 export const chatWithVideo = async (
   message: string,
   videoSummary: VideoSummary,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = []
 ): Promise<string> => {
   try {
-    // For development/testing without Gemini package, use intelligent mock responses
-    // In production, uncomment the code below and install @google/generative-ai
+    console.log('🤖 Generating comprehensive YouTube chat response using all three APIs...');
 
-    console.log('Generating intelligent chat response for video:', videoSummary.title);
+    // Prepare API calls for video chat
+    const apiPromises = [
+      // OpenAI API call for video chat
+      (async () => {
+        try {
+          console.log('🔄 Calling OpenAI for YouTube chat...');
+          const contextPrompt = `You are an AI assistant specialized in discussing YouTube video content. You have comprehensively analyzed this video and can provide detailed, accurate responses based on its content.
 
-    // Prevent unused variable warning - parameter used in commented code below
-    void conversationHistory;
+VIDEO ANALYSIS:
+- Title: "${videoSummary.title}"
+- Summary: ${videoSummary.summary.slice(0, 500)}...
+- Key Points: ${videoSummary.keyPoints.slice(0, 3).join(', ')}
+- Topics: ${videoSummary.topics.join(', ')}
+- Duration: ${videoSummary.duration}
+- Sentiment: ${videoSummary.sentiment}
 
-    const lowerMessage = message.toLowerCase().trim();
+CONVERSATION HISTORY:
+${conversationHistory.slice(-3).map(msg => `${msg.role}: ${msg.content}`).join('\n')}
 
-    // Advanced question analysis and response generation
-    const responses = {
-      // Summary-related questions
-      summary: () => `Based on my analysis of "${videoSummary.title}", the video provides a comprehensive overview of ${videoSummary.topics.join(' and ')}. ${videoSummary.summary} The content is particularly valuable for understanding ${videoSummary.topics[0]?.toLowerCase() || 'the main topic'} and its practical applications.`,
+USER'S QUESTION: ${message}
 
-      overview: () => `The video "${videoSummary.title}" offers an in-depth exploration of ${videoSummary.topics.slice(0, 2).join(' and ')}. It runs for ${videoSummary.duration} and delivers ${videoSummary.sentiment} insights that are highly relevant for ${videoSummary.topics.includes('Education') ? 'learners' : 'professionals'} in the field.`,
+Provide a helpful, detailed response based on the video content above. Reference specific parts of the video when relevant, and be conversational while staying accurate to the video's content. If the question cannot be answered from the video content, clearly state that.`;
 
-      // Key points questions
-      keypoints: () => `Here are the most important points from "${videoSummary.title}":
-• ${videoSummary.keyPoints[0] || 'Core concepts and foundational knowledge'}
-• ${videoSummary.keyPoints[1] || 'Practical applications and real-world examples'}
-• ${videoSummary.keyPoints[2] || 'Key insights and actionable takeaways'}
-The video emphasizes these aspects to provide comprehensive understanding.`,
+          const response = await chatWithOpenAI(contextPrompt, [], undefined);
+          return { api: 'OpenAI', response };
+        } catch (error) {
+          console.warn('OpenAI YouTube chat failed:', error);
+          return { api: 'OpenAI', response: '', error: error instanceof Error ? error.message : 'Unknown error' };
+        }
+      })(),
 
-      mainpoints: () => `The primary focus areas in "${videoSummary.title}" include: ${videoSummary.keyPoints.slice(0, 3).join(', ')}. These points form the foundation of the video's educational value and practical relevance.`,
+      // OpenRouter API call for video chat
+      (async () => {
+        try {
+          console.log('🔄 Calling OpenRouter for YouTube chat...');
+          const contextPrompt = `You are an AI assistant specialized in discussing YouTube video content. You have comprehensively analyzed this video and can provide detailed, accurate responses based on its content.
 
-      // Topic-related questions
-      topics: () => `This video covers several important topics: ${videoSummary.topics.join(', ')}. The primary focus is on ${videoSummary.topics[0] || 'educational content'}, with additional coverage of ${videoSummary.topics.slice(1, 3).join(' and ') || 'related concepts'}.`,
+VIDEO ANALYSIS:
+- Title: "${videoSummary.title}"
+- Summary: ${videoSummary.summary.slice(0, 500)}...
+- Key Points: ${videoSummary.keyPoints.slice(0, 3).join(', ')}
+- Topics: ${videoSummary.topics.join(', ')}
+- Duration: ${videoSummary.duration}
+- Sentiment: ${videoSummary.sentiment}
 
-      subject: () => `The subject matter of "${videoSummary.title}" revolves around ${videoSummary.topics[0] || 'educational content'}. It explores ${videoSummary.topics.slice(1).join(' and ') || 'various aspects'} with a ${videoSummary.sentiment} approach that makes complex topics accessible.`,
+CONVERSATION HISTORY:
+${conversationHistory.slice(-3).map(msg => `${msg.role}: ${msg.content}`).join('\n')}
 
-      // Content analysis questions
-      sentiment: () => `The overall tone of "${videoSummary.title}" is ${videoSummary.sentiment}. The presenter maintains a ${videoSummary.sentiment === 'positive' ? 'constructive and informative' : videoSummary.sentiment === 'negative' ? 'critical and analytical' : 'balanced and objective'} approach throughout the video.`,
+USER'S QUESTION: ${message}
 
-      tone: () => `The tone in "${videoSummary.title}" is ${videoSummary.sentiment} and professional. The content is delivered with ${videoSummary.sentiment === 'positive' ? 'enthusiasm and clarity' : videoSummary.sentiment === 'negative' ? 'careful analysis' : 'neutral objectivity'}, making it engaging for the target audience.`,
+Provide a helpful, detailed response based on the video content above. Reference specific parts of the video when relevant, and be conversational while staying accurate to the video's content. If the question cannot be answered from the video content, clearly state that.`;
 
-      // Technical questions
-      duration: () => `"${videoSummary.title}" runs for ${videoSummary.duration}, which provides adequate time to thoroughly explore ${videoSummary.topics[0]?.toLowerCase() || 'the main topic'} and related concepts. The pacing is well-suited for comprehensive understanding.`,
+          const response = await chatWithOpenRouter(contextPrompt, [], undefined);
+          return { api: 'OpenRouter', response };
+        } catch (error) {
+          console.warn('OpenRouter YouTube chat failed:', error);
+          return { api: 'OpenRouter', response: '', error: error instanceof Error ? error.message : 'Unknown error' };
+        }
+      })(),
 
-      length: () => `At ${videoSummary.duration}, the video length allows for in-depth coverage of ${videoSummary.topics.join(' and ')} without feeling rushed. This duration is typical for educational content of this complexity level.`,
+      // Groq API call for video chat
+      (async () => {
+        try {
+          console.log('🔄 Calling Groq for YouTube chat...');
+          const contextPrompt = `You are an AI assistant specialized in discussing YouTube video content. You have comprehensively analyzed this video and can provide detailed, accurate responses based on its content.
 
-      long: () => `The ${videoSummary.duration} length of "${videoSummary.title}" is appropriate for the depth of content covered. It allows time for detailed explanations, examples, and comprehensive exploration of ${videoSummary.topics[0]?.toLowerCase() || 'the subject matter'}.`,
+VIDEO ANALYSIS:
+- Title: "${videoSummary.title}"
+- Summary: ${videoSummary.summary.slice(0, 500)}...
+- Key Points: ${videoSummary.keyPoints.slice(0, 3).join(', ')}
+- Topics: ${videoSummary.topics.join(', ')}
+- Duration: ${videoSummary.duration}
+- Sentiment: ${videoSummary.sentiment}
 
-      // Specific content questions
-      explain: () => `The video explains ${videoSummary.topics[0]?.toLowerCase() || 'the main concept'} through clear examples and practical demonstrations. Key aspects covered include ${videoSummary.keyPoints.slice(0, 2).join(' and ')}, making complex ideas more accessible.`,
+CONVERSATION HISTORY:
+${conversationHistory.slice(-3).map(msg => `${msg.role}: ${msg.content}`).join('\n')}
 
-      examples: () => `The video includes several practical examples to illustrate ${videoSummary.topics[0]?.toLowerCase() || 'key concepts'}. These demonstrations help viewers understand how to apply the information in real-world scenarios.`,
+USER'S QUESTION: ${message}
 
-      conclusion: () => `The video concludes by emphasizing ${videoSummary.keyPoints[videoSummary.keyPoints.length - 1] || 'the key takeaways'}. It encourages viewers to apply the knowledge gained and continue exploring ${videoSummary.topics[0]?.toLowerCase() || 'related topics'}.`,
+Provide a helpful, detailed response based on the video content above. Reference specific parts of the video when relevant, and be conversational while staying accurate to the video's content. If the question cannot be answered from the video content, clearly state that.`;
 
-      // Engagement questions
-      recommend: () => `I would recommend "${videoSummary.title}" to anyone interested in ${videoSummary.topics[0]?.toLowerCase() || 'this subject'}. The video provides ${videoSummary.sentiment} insights that are both informative and practically valuable.`,
+          const response = await chatWithContext(contextPrompt, [], undefined);
+          return { api: 'Groq', response };
+        } catch (error) {
+          console.warn('Groq YouTube chat failed:', error);
+          return { api: 'Groq', response: '', error: error instanceof Error ? error.message : 'Unknown error' };
+        }
+      })(),
 
-      useful: () => `This video is particularly useful for understanding ${videoSummary.topics.join(' and ')}. It offers ${videoSummary.sentiment} perspectives that can help viewers gain deeper insights into ${videoSummary.topics[0]?.toLowerCase() || 'the subject matter'}.`,
+      // Google Gemini API call for video chat
+      (async () => {
+        try {
+          console.log('🔄 Calling Google Gemini for YouTube chat...');
+          const contextPrompt = `You are an AI assistant specialized in discussing YouTube video content. You have comprehensively analyzed this video and can provide detailed, accurate responses based on its content.
 
-      // Default response
-      default: () => `Thank you for your question about "${videoSummary.title}". This video explores ${videoSummary.topics.join(' and ')} with a focus on ${videoSummary.keyPoints[0] || 'educational content'}. The ${videoSummary.duration} presentation provides valuable insights that are relevant for anyone interested in ${videoSummary.topics[0]?.toLowerCase() || 'this field'}. If you'd like to know more about specific aspects like the key points, topics covered, or main takeaways, feel free to ask!`
-    };
+VIDEO ANALYSIS:
+- Title: "${videoSummary.title}"
+- Summary: ${videoSummary.summary.slice(0, 500)}...
+- Key Points: ${videoSummary.keyPoints.slice(0, 3).join(', ')}
+- Topics: ${videoSummary.topics.join(', ')}
+- Duration: ${videoSummary.duration}
+- Sentiment: ${videoSummary.sentiment}
 
-    // Match question to appropriate response
-    for (const [keyword, responseFn] of Object.entries(responses)) {
-      if (lowerMessage.includes(keyword) && keyword !== 'default') {
-        return responseFn();
+CONVERSATION HISTORY:
+${conversationHistory.slice(-3).map(msg => `${msg.role}: ${msg.content}`).join('\n')}
+
+USER'S QUESTION: ${message}
+
+Provide a helpful, detailed response based on the video content above. Reference specific parts of the video when relevant, and be conversational while staying accurate to the video's content. If the question cannot be answered from the video content, clearly state that.`;
+
+          const response = await chatWithGemini(contextPrompt, [], undefined);
+          return { api: 'Google Gemini', response };
+        } catch (error) {
+          console.warn('Google Gemini YouTube chat failed:', error);
+          return { api: 'Google Gemini', response: '', error: error instanceof Error ? error.message : 'Unknown error' };
+        }
+      })()
+    ];
+
+    // Wait for all API calls to complete (with timeout)
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('YouTube chat API calls timed out')), 60000) // 60 seconds timeout
+    );
+
+    try {
+      const results = await Promise.race([
+        Promise.all(apiPromises),
+        timeoutPromise
+      ]);
+
+      console.log(`✅ Received ${results.filter(r => r.response).length} successful YouTube chat responses`);
+
+      // Filter out failed responses and combine using synthesis
+      const validResults = results.filter(r => r.response !== '') as { api: string; response: string; error?: string }[];
+      return await combineYouTubeChatResponses(message, videoSummary, conversationHistory, validResults);
+    } catch (error) {
+      console.error('Multi-API YouTube chat failed:', error);
+      // Fall back to simple response based on video summary
+      console.log('🔄 Falling back to summary-based response...');
+
+      const lowerMessage = message.toLowerCase().trim();
+      if (lowerMessage.includes('summary') || lowerMessage.includes('overview')) {
+        return `Based on my comprehensive analysis of "${videoSummary.title}", this video provides an in-depth exploration of ${videoSummary.topics.join(' and ')}. ${videoSummary.summary.slice(0, 300)}... The content delivers ${videoSummary.sentiment} insights that are highly valuable for understanding ${videoSummary.topics[0]?.toLowerCase() || 'the main topic'}.`;
+      } else if (lowerMessage.includes('key') && lowerMessage.includes('point')) {
+        return `Here are the key points from "${videoSummary.title}":\n${videoSummary.keyPoints.slice(0, 4).map(point => `• ${point}`).join('\n')}`;
+      } else {
+        return `Thank you for your question about "${videoSummary.title}". This video explores ${videoSummary.topics.join(' and ')} with a focus on ${videoSummary.keyPoints[0] || 'educational content'}. The ${videoSummary.duration} presentation provides valuable insights relevant to anyone interested in ${videoSummary.topics[0]?.toLowerCase() || 'this field'}.`;
       }
     }
-
-    // Check for partial matches and compound questions
-    if (lowerMessage.includes('what') && (lowerMessage.includes('video') || lowerMessage.includes('about'))) {
-      return responses.overview();
-    }
-
-    if (lowerMessage.includes('how') && lowerMessage.includes('long')) {
-      return responses.duration();
-    }
-
-    if (lowerMessage.includes('tell me') && lowerMessage.includes('about')) {
-      return responses.summary();
-    }
-
-    if (lowerMessage.includes('what') && lowerMessage.includes('topics')) {
-      return responses.topics();
-    }
-
-    // Return default response for unmatched questions
-    return responses.default();
-
-    // Uncomment below for real Gemini AI integration (requires package installation)
-    /*
-    const genAI = getGeminiClient();
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
-    const contextPrompt = `You are an AI assistant specialized in discussing YouTube video content. You have analyzed this video:
-
-Video: "${videoSummary.title}"
-Summary: ${videoSummary.summary}
-Key Points: ${videoSummary.keyPoints.join(', ')}
-Topics: ${videoSummary.topics.join(', ')}
-Duration: ${videoSummary.duration}
-
-Previous conversation:
-${conversationHistory.map(msg => `${msg.role}: ${msg.content}`).join('\n')}
-
-User's new question: ${message}
-
-Provide a helpful, accurate response based on the video content. Be conversational and engaging while staying true to the video's content.`;
-
-    const result = await model.generateContent(contextPrompt);
-    const response = await result.response;
-    return response.text().trim();
-    */
   } catch (error) {
-    console.error('Error chatting with video:', error);
-    throw new Error('Failed to process your question. Please try again.');
+    console.error('Error chatting with YouTube video:', error);
+    throw new Error('Failed to process your YouTube question. Please try again.');
   }
 };
 
 // Validate YouTube URL
 export const isValidYouTubeUrl = (url: string): boolean => {
   return extractVideoId(url) !== null;
+};
+
+// Helper functions for text analysis
+const extractKeyPointsFromText = (text: string): string[] => {
+  const lines = text.split('\n');
+  const keyPoints: string[] = [];
+
+  lines.forEach(line => {
+    // Look for lines that might be key points (contain timestamps, bullets, or numbered items)
+    if (line.includes('[') && line.includes(']') && (line.includes(':') || line.includes('-'))) {
+      keyPoints.push(line.trim());
+    } else if (line.match(/^\d+\./) || line.match(/^[•\-*]/)) {
+      keyPoints.push(line.trim());
+    } else if (line.toLowerCase().includes('key point') || line.toLowerCase().includes('important')) {
+      keyPoints.push(line.trim());
+    }
+  });
+
+  // If no specific key points found, extract first few meaningful lines
+  if (keyPoints.length === 0) {
+    const meaningfulLines = lines.filter(line =>
+      line.length > 20 && !line.toLowerCase().includes('summary') && !line.toLowerCase().includes('analysis')
+    ).slice(0, 5);
+    keyPoints.push(...meaningfulLines.map(line => line.trim()));
+  }
+
+  return keyPoints.slice(0, 8); // Limit to 8 key points
+};
+
+const extractTopicsFromText = (text: string): string[] => {
+  const topics: string[] = [];
+  const lowerText = text.toLowerCase();
+
+  // Common topic keywords
+  const topicKeywords = {
+    technology: ['technology', 'software', 'programming', 'code', 'web', 'app', 'digital'],
+    business: ['business', 'startup', 'entrepreneur', 'finance', 'marketing', 'strategy'],
+    education: ['education', 'learning', 'tutorial', 'course', 'teaching', 'knowledge'],
+    science: ['science', 'research', 'experiment', 'discovery', 'physics', 'chemistry'],
+    health: ['health', 'fitness', 'medical', 'wellness', 'diet', 'exercise'],
+    entertainment: ['entertainment', 'movie', 'music', 'game', 'show', 'film'],
+    ai: ['ai', 'artificial intelligence', 'machine learning', 'automation', 'robot'],
+    cooking: ['cooking', 'recipe', 'food', 'kitchen', 'baking', 'chef'],
+    travel: ['travel', 'vacation', 'trip', 'destination', 'tourism'],
+    sports: ['sports', 'football', 'basketball', 'game', 'athlete']
+  };
+
+  Object.entries(topicKeywords).forEach(([topic, keywords]) => {
+    if (keywords.some(keyword => lowerText.includes(keyword))) {
+      topics.push(topic.charAt(0).toUpperCase() + topic.slice(1));
+    }
+  });
+
+  // Add custom topics from text
+  if (lowerText.includes('tutorial') || lowerText.includes('guide')) topics.push('Tutorial');
+  if (lowerText.includes('review') || lowerText.includes('analysis')) topics.push('Review');
+  if (lowerText.includes('interview') || lowerText.includes('talk')) topics.push('Interview');
+  if (lowerText.includes('news') || lowerText.includes('update')) topics.push('News');
+
+  return [...new Set(topics)]; // Remove duplicates
+};
+
+const analyzeSentimentFromText = (text: string): 'positive' | 'neutral' | 'negative' => {
+  const lowerText = text.toLowerCase();
+
+  const positiveWords = ['amazing', 'awesome', 'excellent', 'great', 'fantastic', 'wonderful', 'brilliant', 'outstanding', 'incredible', 'perfect', 'best', 'love', 'recommend'];
+  const negativeWords = ['terrible', 'awful', 'horrible', 'worst', 'bad', 'disappointing', 'poor', 'fail', 'hate', 'disaster', 'problem', 'issue'];
+
+  const positiveCount = positiveWords.reduce((count, word) => count + (lowerText.split(word).length - 1), 0);
+  const negativeCount = negativeWords.reduce((count, word) => count + (lowerText.split(word).length - 1), 0);
+
+  if (positiveCount > negativeCount) return 'positive';
+  if (negativeCount > positiveCount) return 'negative';
+  return 'neutral';
 };
 
 // Get video thumbnail URL

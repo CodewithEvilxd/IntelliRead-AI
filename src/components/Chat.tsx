@@ -22,15 +22,16 @@ import { cn, generateId, formatRelativeTime, parseMarkdown } from '../utils';
 import type { Message, Attachment, ComparisonType } from '../types';
 import { processFile, cleanupFileResources, getFileStats, extractKeyInfo, compareDocuments, validateDocumentsForComparison } from '../services/fileService';
 import { chatWithContext } from '../services/groqService';
-// TODO: Re-enable database imports when ready
-// import { ensureUser, createChatSession, saveMessage, getChatHistory, getMessagesForSession, saveSearchHistory } from '../db';
-import type { ChatSession } from '../db/schema';
+import { createChatSession, addMessageToSession } from '../utils/historyUtils';
+import type { HistoryItem } from '../utils/historyUtils';
+import { APIStatusIndicator } from './APILogos';
 
 interface ChatProps {
     onBackToLanding: () => void;
+    sessionId: string | undefined;
 }
 
-const Chat: React.FC<ChatProps> = ({ onBackToLanding }) => {
+const Chat: React.FC<ChatProps> = ({ onBackToLanding, sessionId }) => {
     const { user } = useUser();
     const { signOut } = useClerk();
 
@@ -48,7 +49,7 @@ const Chat: React.FC<ChatProps> = ({ onBackToLanding }) => {
     const [isComparing, setIsComparing] = useState(false);
     const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
     const [showHistory, setShowHistory] = useState(false);
-    const [chatHistory, setChatHistory] = useState<ChatSession[]>([]);
+    const [chatHistory, setChatHistory] = useState<HistoryItem[]>([]);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -71,10 +72,10 @@ const Chat: React.FC<ChatProps> = ({ onBackToLanding }) => {
     const loadChatHistory = useCallback(async () => {
         if (!user) return;
         try {
-            // TODO: Load chat history from database (disabled for testing)
-            // const history = await getChatHistory(user.id);
-            // setChatHistory(history);
-            setChatHistory([]); // Empty for now
+            // Load chat history from localStorage
+            const { getChatHistory } = await import('../utils/historyUtils');
+            const history = getChatHistory().filter(item => item.type === 'pdf');
+            setChatHistory(history);
         } catch (error) {
             console.error('Failed to load chat history:', error);
         }
@@ -87,20 +88,48 @@ const Chat: React.FC<ChatProps> = ({ onBackToLanding }) => {
         }
     }, [user, loadChatHistory]);
 
+    // Load session if sessionId is provided
+    useEffect(() => {
+        const loadSession = async () => {
+            if (sessionId && user) {
+                const { getChatSession } = await import('../utils/historyUtils');
+                const session = getChatSession(sessionId);
+
+                if (session) {
+                    const formattedMessages: Message[] = session.messages.map((msg) => ({
+                        id: msg.id,
+                        content: msg.content,
+                        role: msg.role as 'user' | 'assistant',
+                        timestamp: msg.timestamp,
+                        attachments: (msg.attachments as Attachment[]) || [],
+                    }));
+                    setMessages(formattedMessages);
+                    setCurrentSessionId(sessionId);
+                }
+            }
+        };
+
+        loadSession();
+    }, [sessionId, user]);
+
     const loadChatSession = async (sessionId: string) => {
         try {
-            // TODO: Load chat session from database (disabled for testing)
-            // const sessionMessages = await getMessagesForSession(sessionId);
-            // const formattedMessages: Message[] = sessionMessages.map(msg => ({
-            //     id: msg.id,
-            //     content: msg.content,
-            //     role: msg.role as 'user' | 'assistant',
-            //     timestamp: new Date(msg.timestamp),
-            //     attachments: (msg.attachments as Attachment[]) || [],
-            // }));
-            // setMessages(formattedMessages);
-            setMessages([]); // Empty for now
-            setCurrentSessionId(sessionId);
+            const { getChatSession } = await import('../utils/historyUtils');
+            const session = getChatSession(sessionId);
+
+            if (session) {
+                const formattedMessages: Message[] = session.messages.map(msg => ({
+                    id: msg.id,
+                    content: msg.content,
+                    role: msg.role as 'user' | 'assistant',
+                    timestamp: msg.timestamp,
+                    attachments: (msg.attachments as Attachment[]) || [],
+                }));
+                setMessages(formattedMessages);
+                setCurrentSessionId(sessionId);
+            } else {
+                setMessages([]);
+            }
             setShowHistory(false);
         } catch (error) {
             console.error('Failed to load chat session:', error);
@@ -206,17 +235,12 @@ Some suggestions:
     const handleSendMessage = async () => {
         if ((!input.trim() && !attachment) || isLoading || !user) return;
 
-        // TODO: Ensure user exists in database (disabled for testing)
-        // await ensureUser(user.id, user.primaryEmailAddress?.emailAddress || '', user.fullName || '', user.imageUrl || '');
-
         // Create session if not exists
         let sessionId = currentSessionId;
         if (!sessionId) {
-            // TODO: Create chat session in database (disabled for testing)
-            // const session = await createChatSession(user.id, input.trim().slice(0, 50) || 'New Chat');
-            // if (!session) return; // Safety check
-            // sessionId = session.id;
-            sessionId = `session-${Date.now()}`; // Temporary session ID
+            const title = attachment ? `Chat with ${attachment.name}` : (input.trim().slice(0, 50) || 'New Chat');
+            const session = createChatSession('pdf', title, undefined, attachment?.name);
+            sessionId = session.id;
             setCurrentSessionId(sessionId);
         }
 
@@ -236,13 +260,12 @@ Some suggestions:
         setError(null);
 
         try {
-            // TODO: Save user message to database (disabled for testing)
-            // await saveMessage(sessionId, 'user', input.trim(), attachment ? [attachment] : undefined);
-
-            // TODO: Save search history if it's a search query (disabled for testing)
-            // if (input.trim() && attachment) {
-            //     await saveSearchHistory(user.id, input.trim(), attachment.name);
-            // }
+            // Save user message to session
+            addMessageToSession(sessionId, {
+                content: input.trim(),
+                role: 'user',
+                attachments: attachment ? [attachment] : []
+            });
 
             const conversationHistory = messages.map(msg => ({
                 role: msg.role,
@@ -280,8 +303,11 @@ Some suggestions:
 
             setMessages(prev => [...prev, aiMessage]);
 
-            // TODO: Save AI response to database (disabled for testing)
-            // await saveMessage(sessionId, 'assistant', response);
+            // Save AI response to session
+            addMessageToSession(sessionId, {
+                content: response,
+                role: 'assistant'
+            });
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Failed to process your request';
             setError(errorMessage);
@@ -478,13 +504,13 @@ ${result.detailedAnalysis ? `## Detailed Analysis\n${result.detailedAnalysis}` :
                                 {chatHistory.length === 0 ? (
                                     <p className="text-center text-vintage-gray-500 py-8">No chat history found</p>
                                 ) : (
-                                    chatHistory.map((session: ChatSession) => (
+                                    chatHistory.map((session: HistoryItem) => (
                                         <div key={session.id} className="border border-vintage-gray-200 rounded-lg p-4 hover:bg-vintage-gray-50">
                                             <div className="flex justify-between items-start">
                                                 <div>
                                                     <h4 className="font-medium text-vintage-black">{session.title}</h4>
                                                     <p className="text-sm text-vintage-gray-500">
-                                                        {formatRelativeTime(new Date(session.createdAt))}
+                                                        {formatRelativeTime(session.timestamp)}
                                                     </p>
                                                 </div>
                                                 <button
@@ -829,11 +855,19 @@ ${result.detailedAnalysis ? `## Detailed Analysis\n${result.detailedAnalysis}` :
                                             <Brain className="w-5 h-5 text-vintage-white" />
                                         </div>
                                         <div className="p-5 rounded-2xl rounded-bl-lg border bg-vintage-white border-vintage-gray-200 shadow-vintage-lg">
-                                            <div className="flex items-center space-x-3">
-                                                <div className="spinner-vintage" />
-                                                <span className="font-mono text-sm text-vintage-gray-600">
-                                                    {processingStatus || 'Thinking...'}
-                                                </span>
+                                            <div className="space-y-3">
+                                                <div className="flex items-center space-x-3">
+                                                    <div className="spinner-vintage" />
+                                                    <span className="font-mono text-sm text-vintage-gray-600">
+                                                        {processingStatus || 'Analyzing with multiple AI models...'}
+                                                    </span>
+                                                </div>
+                                                {attachment && (
+                                                    <APIStatusIndicator
+                                                        apis={['openai', 'groq', 'openrouter']}
+                                                        className="justify-start"
+                                                    />
+                                                )}
                                             </div>
                                         </div>
                                     </div>
