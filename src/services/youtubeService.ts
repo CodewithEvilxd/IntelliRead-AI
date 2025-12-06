@@ -284,12 +284,24 @@ SYNTHESIS INSTRUCTIONS:
 6. If analyses differ, explain the different perspectives and provide the most complete analysis
 7. Ensure the final summary is detailed and thorough
 
-Create a single, comprehensive VideoSummary object that represents the best analysis possible. Focus on:
-- A detailed executive summary
-- Comprehensive key points with timestamps where possible
-- All relevant topics covered
-- Accurate sentiment and language detection
-- Professional analysis quality
+Create a single, well-organized video summary in this exact format:
+
+**VIDEO OVERVIEW**
+[Brief description of main topic and purpose, target audience]
+
+**CONTENT BREAKDOWN**
+[Detailed breakdown with timestamps where possible, key sections covered]
+
+**KEY TAKEAWAYS**
+[Most important insights, techniques, practical value]
+
+**TOPICS & THEMES**
+[Main subject areas and related concepts explored]
+
+**CONTENT QUALITY**
+[Overall assessment, strengths, notable aspects]
+
+Focus on clarity, practical value, and comprehensive coverage while maintaining organized structure.
 
 Format your response as a complete video summary:`;
 
@@ -528,16 +540,29 @@ VIDEO INFORMATION:
 - Description: ${videoInfo.description || 'Not available'}
 
 CONTENT ANALYSIS REQUEST:
-Provide a comprehensive analysis of this YouTube video including:
-1. **Executive Summary**: Detailed overview of the video's content and purpose
-2. **Content Breakdown**: What the video covers with specific timestamps where possible
-3. **Key Insights**: Important points, techniques, or information presented
-4. **Target Audience**: Who would benefit most from this content
-5. **Value Proposition**: What viewers will learn or gain
-6. **Topics Covered**: Main subject areas and themes
-7. **Overall Assessment**: Professional evaluation of content quality
+Provide a well-organized, comprehensive summary of this YouTube video in the following structured format:
 
-Be thorough and reference specific parts of the video content. Structure your response professionally.`;
+**VIDEO OVERVIEW**
+- Brief description of the video's main topic and purpose
+- Target audience and who would benefit most
+
+**CONTENT BREAKDOWN**
+- Detailed breakdown of what the video covers with timestamps where possible
+- Key sections and main points discussed
+
+**KEY TAKEAWAYS**
+- Most important insights, techniques, or information presented
+- Practical value and actionable insights
+
+**TOPICS & THEMES**
+- Main subject areas covered
+- Related concepts and themes explored
+
+**CONTENT QUALITY**
+- Overall assessment of video quality and presentation
+- Strengths and notable aspects
+
+Keep the summary comprehensive but well-organized. Focus on clarity and practical value. Reference specific video content when relevant.`;
 
           const summary = await chatWithOpenAI(prompt, [], undefined);
           const mockTranscript = await fetchMockTranscript(videoInfo.id, videoInfo.title);
@@ -574,16 +599,29 @@ VIDEO INFORMATION:
 - Description: ${videoInfo.description || 'Not available'}
 
 CONTENT ANALYSIS REQUEST:
-Provide a comprehensive analysis of this YouTube video including:
-1. **Executive Summary**: Detailed overview of the video's content and purpose
-2. **Content Breakdown**: What the video covers with specific timestamps where possible
-3. **Key Insights**: Important points, techniques, or information presented
-4. **Target Audience**: Who would benefit most from this content
-5. **Value Proposition**: What viewers will learn or gain
-6. **Topics Covered**: Main subject areas and themes
-7. **Overall Assessment**: Professional evaluation of content quality
+Provide a well-organized, comprehensive summary of this YouTube video in the following structured format:
 
-Be thorough and reference specific parts of the video content. Structure your response professionally.`;
+**VIDEO OVERVIEW**
+- Brief description of the video's main topic and purpose
+- Target audience and who would benefit most
+
+**CONTENT BREAKDOWN**
+- Detailed breakdown of what the video covers with timestamps where possible
+- Key sections and main points discussed
+
+**KEY TAKEAWAYS**
+- Most important insights, techniques, or information presented
+- Practical value and actionable insights
+
+**TOPICS & THEMES**
+- Main subject areas covered
+- Related concepts and themes explored
+
+**CONTENT QUALITY**
+- Overall assessment of video quality and presentation
+- Strengths and notable aspects
+
+Keep the summary comprehensive but well-organized. Focus on clarity and practical value. Reference specific video content when relevant.`;
 
           const summary = await chatWithOpenRouter(prompt, [], undefined);
           const mockTranscript = await fetchMockTranscript(videoInfo.id, videoInfo.title);
@@ -620,16 +658,29 @@ VIDEO INFORMATION:
 - Description: ${videoInfo.description || 'Not available'}
 
 CONTENT ANALYSIS REQUEST:
-Provide a comprehensive analysis of this YouTube video including:
-1. **Executive Summary**: Detailed overview of the video's content and purpose
-2. **Content Breakdown**: What the video covers with specific timestamps where possible
-3. **Key Insights**: Important points, techniques, or information presented
-4. **Target Audience**: Who would benefit most from this content
-5. **Value Proposition**: What viewers will learn or gain
-6. **Topics Covered**: Main subject areas and themes
-7. **Overall Assessment**: Professional evaluation of content quality
+Provide a well-organized, comprehensive summary of this YouTube video in the following structured format:
 
-Be thorough and reference specific parts of the video content. Structure your response professionally.`;
+**VIDEO OVERVIEW**
+- Brief description of the video's main topic and purpose
+- Target audience and who would benefit most
+
+**CONTENT BREAKDOWN**
+- Detailed breakdown of what the video covers with timestamps where possible
+- Key sections and main points discussed
+
+**KEY TAKEAWAYS**
+- Most important insights, techniques, or information presented
+- Practical value and actionable insights
+
+**TOPICS & THEMES**
+- Main subject areas covered
+- Related concepts and themes explored
+
+**CONTENT QUALITY**
+- Overall assessment of video quality and presentation
+- Strengths and notable aspects
+
+Keep the summary comprehensive but well-organized. Focus on clarity and practical value. Reference specific video content when relevant.`;
 
           const summary = await chatWithContext(prompt, [], undefined);
           const mockTranscript = await fetchMockTranscript(videoInfo.id, videoInfo.title);
